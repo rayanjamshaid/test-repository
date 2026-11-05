@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mmWave Radar Telemetry Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            
+            <!-- Left: Title & Sensor Selector -->
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-base font-bold text-slate-900 leading-tight">mmWave Radar Monitor</h1>
+                        <p class="text-xs text-slate-500">60GHz Multi-Sensor Dashboard</p>
+                    </div>
+                </div>
+
+                <!-- Divider -->
+                <div class="h-6 w-px bg-slate-200 hidden sm:block"></div>
+
+                <!-- Sensor Selector Dropdown -->
+                <div class="flex items-center gap-2">
+                    <label for="sensorSelect" class="text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:block">Active Sensor:</label>
+                    <select id="sensorSelect" onchange="switchSensor(this.value)" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-2 font-medium cursor-pointer transition">
+                        <option value="chip1">Sensor 1 (Chip 1 - Zone A)</option>
+                        <option value="chip2">Sensor 2 (Chip 2 - Zone B)</option>
+                        <option value="chip3">Sensor 3 (Chip 3 - Zone C)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Right: System Status & Clock -->
+            <div class="flex items-center gap-4">
+                <div id="statusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>System Connected</span>
+                </div>
+                <div class="text-xs text-slate-500 font-mono hidden sm:block" id="systemClock">
+                    UTC 00:00:00
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+        <!-- Top Overview Banner for Selected Sensor -->
+        <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-indigo-50 rounded-lg text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-lg font-bold text-slate-900" id="sensorTitle">Sensor 1 (Chip 1)</h2>
+                        <span id="sensorZoneBadge" class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">Zone A</span>
+                    </div>
+                    <p class="text-xs text-slate-500" id="sensorMetadata">Device ID: AKM5818-01 • IP: 192.168.2.201 • Firmware: v1.4.2</p>
+                </div>
+            </div>
+
+            <!-- Interactive Quick Controls for Simulation/Testing -->
+            <div class="flex items-center gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+                <span class="text-xs text-slate-400 font-medium mr-1">Simulate State:</span>
+                <button onclick="simulateState('standing')" class="px-2.5 py-1 text-xs font-medium rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Standing</button>
+                <button onclick="simulateState('sitting')" class="px-2.5 py-1 text-xs font-medium rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Sitting</button>
+                <button onclick="simulateState('lying')" class="px-2.5 py-1 text-xs font-medium rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Lying</button>
+                <button onclick="simulateState('absent')" class="px-2.5 py-1 text-xs font-medium rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Absent</button>
+            </div>
+        </div>
+
+        <!-- Grid Layout: 4 Main Dashboard Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- Card 1: Active Posture Status -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Metric 01</span>
+                            <h3 class="text-base font-bold text-slate-800">Active Posture Status</h3>
+                        </div>
+                        <span id="confidenceBadge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            89% Confidence
+                        </span>
+                    </div>
+
+                    <div class="py-6 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500 mb-1">Current Classification</p>
+                            <div class="flex items-baseline gap-2">
+                                <span id="postureText" class="text-3xl font-extrabold text-slate-900 tracking-tight">Sitting</span>
+                            </div>
+                        </div>
+
+                        <!-- Posture Graphic/Icon Badge -->
+                        <div id="postureIconContainer" class="w-16 h-16 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                            <!-- SVG Icon dynamically inserted by JS -->
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Dwell Timer Footer -->
+                <div class="bg-slate-50 border border-slate-100 rounded-lg p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-slate-600">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-xs font-medium">Posture Duration (Dwell Time)</span>
+                    </div>
+                    <span id="dwellTimer" class="font-mono text-base font-bold text-slate-900">00:14:22</span>
+                </div>
+            </div>
+
+            <!-- Card 2: Detection Status & Distance -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Metric 02</span>
+                            <h3 class="text-base font-bold text-slate-800">Detection & Spatial Metrics</h3>
+                        </div>
+                        <span id="presenceBadge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Person Present
+                        </span>
+                    </div>
+
+                    <div class="py-6 grid grid-cols-2 gap-4">
+                        <!-- Distance Estimate -->
+                        <div>
+                            <p class="text-xs font-medium text-slate-500 mb-1">Distance from Sensor (R)</p>
+                            <div class="flex items-baseline gap-1">
+                                <span id="distanceValue" class="text-3xl font-extrabold text-slate-900 tracking-tight">2.14</span>
+                                <span class="text-sm font-semibold text-slate-500">meters</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1">Calculated: √(X² + Y² + Z²)</p>
+                        </div>
+
+                        <!-- 3D Coordinates Breakdown -->
+                        <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs space-y-1.5 font-mono">
+                            <div class="flex justify-between text-slate-600">
+                                <span>X (Azimuth):</span>
+                                <span id="coordX" class="font-bold text-slate-800">+0.45 m</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600">
+                                <span>Y (Range):</span>
+                                <span id="coordY" class="font-bold text-slate-800">+1.95 m</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600">
+                                <span>Z (Elevation):</span>
+                                <span id="coordZ" class="font-bold text-slate-800">+0.82 m</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Signal Quality Indicator Footer -->
+                <div class="bg-slate-50 border border-slate-100 rounded-lg p-4 flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-600">Signal-to-Noise Ratio (SNR)</span>
+                    <div class="flex items-center gap-2">
+                        <div class="w-24 bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div id="snrBar" class="bg-emerald-500 h-2 rounded-full" style="width: 82%"></div>
+                        </div>
+                        <span id="snrText" class="text-xs font-mono font-bold text-slate-700">24.5 dB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Recent Posture Transition History -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Log</span>
+                            <h3 class="text-base font-bold text-slate-800">Posture Transition History</h3>
+                        </div>
+                        <button onclick="clearHistory()" class="text-xs text-slate-500 hover:text-slate-800 underline transition">Clear View</button>
+                    </div>
+
+                    <!-- Scrollable Transition List -->
+                    <div class="py-3 overflow-y-auto max-h-56">
+                        <table class="w-full text-left text-xs">
+                            <thead class="text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-100">
+                                <tr>
+                                    <th class="py-2">Time</th>
+                                    <th class="py-2">Transition</th>
+                                    <th class="py-2 text-right">Dwell Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody" class="divide-y divide-slate-100 text-slate-700 font-medium">
+                                <!-- History Rows inserted dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 text-[11px] text-slate-400 flex justify-between items-center">
+                    <span>Logs rolling history (Last 10 events)</span>
+                    <span id="totalTransitionsCount">3 transitions today</span>
+                </div>
+            </div>
+
+            <!-- Card 4: ADC Data Download -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Export</span>
+                            <h3 class="text-base font-bold text-slate-800">ADC Data Export</h3>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">MIPI-CSI Buffer</span>
+                    </div>
+
+                    <div class="py-4 space-y-3">
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Download raw time-domain I/Q ADC sample buffer frames collected directly from the hardware DMA controller.
+                        </p>
+
+                        <!-- Buffer Meta Summary -->
+                        <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs font-mono">
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Frame Size:</span>
+                                <span id="adcFrameSize" class="font-bold text-slate-700">6,144 Bytes</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Sampling Rate:</span>
+                                <span class="font-bold text-slate-700">53.333 Msps</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Rx Channels:</span>
+                                <span class="font-bold text-slate-700">16 Channels</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Encoding:</span>
+                                <span class="font-bold text-slate-700">RAW12 Packed</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Download Buttons -->
+                <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+                    <button onclick="downloadADC('csv')" class="flex-1 inline-flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 px-4 rounded-lg shadow-sm transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Download CSV (.csv)
+                    </button>
+                    
+                    <button onclick="downloadADC('bin')" class="flex-1 inline-flex justify-center items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2.5 px-4 rounded-lg shadow-sm transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Download Raw Binary (.bin)
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Notification Toast Box (Hidden by default) -->
+        <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg border border-slate-800 opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span id="toastMessage">Action completed successfully.</span>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-4">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
+            mmWave 60GHz Telemetry Architecture • OPTION1_INTEGRATED System • Single-File Wireframe
+        </div>
+    </footer>
+
+    <!-- Application Logic & Data Pipeline Simulation -->
+    <script>
+        // Mock Sensors Database
+        const sensorsData = {
+            chip1: {
+                title: "Sensor 1 (Chip 1)",
+                zone: "Zone A - Bedside",
+                ip: "192.168.2.201",
+                firmware: "v1.4.2",
+                status: "PERSON_PRESENT",
+                posture: "Sitting",
+                confidence: 89,
+                distance: 2.14,
+                coords: { x: "+0.45", y: "+1.95", z: "+0.82" },
+                snr: 24.5,
+                dwellSeconds: 862, // 14m 22s
+                history: [
+                    { time: "14:22:10", from: "Standing", to: "Sitting", duration: "04m 12s" },
+                    { time: "14:17:58", from: "Unknown", to: "Standing", duration: "01m 05s" },
+                    { time: "14:16:53", from: "Absent", to: "Unknown", duration: "00m 15s" }
+                ]
+            },
+            chip2: {
+                title: "Sensor 2 (Chip 2)",
+                zone: "Zone B - Living Area",
+                ip: "192.168.2.202",
+                firmware: "v1.4.2",
+                status: "PERSON_PRESENT",
+                posture: "Lying",
+                confidence: 94,
+                distance: 1.85,
+                coords: { x: "-0.12", y: "+1.82", z: "+0.31" },
+                snr: 28.1,
+                dwellSeconds: 3912, // 1h 05m 12s
+                history: [
+                    { time: "13:09:40", from: "Sitting", to: "Lying", duration: "12m 45s" },
+                    { time: "12:56:55", from: "Standing", to: "Sitting", duration: "22m 10s" }
+                ]
+            },
+            chip3: {
+                title: "Sensor 3 (Chip 3)",
+                zone: "Zone C - Hallway",
+                ip: "192.168.2.203",
+                firmware: "v1.4.0",
+                status: "PERSON_ABSENT",
+                posture: "Unknown",
+                confidence: 0,
+                distance: 0.00,
+                coords: { x: "0.00", y: "0.00", z: "0.00" },
+                snr: 4.2,
+                dwellSeconds: 0,
+                history: [
+                    { time: "12:30:15", from: "Sitting", to: "Absent", duration: "45m 20s" }
+                ]
+            }
+        };
+
+        let currentSensorId = "chip1";
+        let timerInterval = null;
+
+        // Initialize Dashboard
+        window.addEventListener('DOMContentLoaded', () => {
+            updateClock();
+            setInterval(updateClock, 1000);
+            renderSensorData(currentSensorId);
+            startDwellTimer();
+        });
+
+        // Switch Active Sensor
+        function switchSensor(sensorId) {
+            currentSensorId = sensorId;
+            renderSensorData(sensorId);
+            showToast(`Switched view to ${sensorsData[sensorId].title}`);
+        }
+
+        // Render Sensor State into UI
+        function renderSensorData(sensorId) {
+            const data = sensorsData[sensorId];
+
+            // Update Header & Metadata
+            document.getElementById('sensorTitle').textContent = data.title;
+            document.getElementById('sensorZoneBadge').textContent = data.zone;
+            document.getElementById('sensorMetadata').textContent = `Device ID: ${sensorId.toUpperCase()} • IP: ${data.ip} • Firmware: ${data.firmware}`;
+
+            // Card 1: Posture & Confidence
+            document.getElementById('postureText').textContent = data.posture;
+            document.getElementById('confidenceBadge').textContent = `${data.confidence}% Confidence`;
+            
+            // Posture Icon Update
+            updatePostureIcon(data.posture);
+
+            // Card 2: Detection & Distance
+            const presenceBadge = document.getElementById('presenceBadge');
+            if (data.status === 'PERSON_PRESENT') {
+                presenceBadge.textContent = 'Person Present';
+                presenceBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+            } else {
+                presenceBadge.textContent = 'Person Absent';
+                presenceBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200';
+            }
+
+            document.getElementById('distanceValue').textContent = data.status === 'PERSON_PRESENT' ? data.distance.toFixed(2) : '--';
+            document.getElementById('coordX').textContent = `${data.coords.x} m`;
+            document.getElementById('coordY').textContent = `${data.coords.y} m`;
+            document.getElementById('coordZ').textContent = `${data.coords.z} m`;
+            document.getElementById('snrText').textContent = `${data.snr} dB`;
+            document.getElementById('snrBar').style.width = `${Math.min(100, data.snr * 3)}%`;
+
+            // Card 3: Render Transition Table
+            renderHistoryTable(data.history);
+
+            // Update Dwell Timer Display
+            updateDwellTimerDisplay(data.dwellSeconds);
+        }
+
+        // Render History Table
+        function renderHistoryTable(historyList) {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            if (historyList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-400 italic">No recent transitions logged</td></tr>`;
+                document.getElementById('totalTransitionsCount').textContent = '0 transitions today';
+                return;
+            }
+
+            historyList.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50 transition';
+                row.innerHTML = `
+                    <td class="py-2 font-mono text-slate-500">${item.time}</td>
+                    <td class="py-2">
+                        <span class="text-slate-500">${item.from}</span>
+                        <span class="text-slate-400 mx-1">→</span>
+                        <span class="font-bold text-slate-800">${item.to}</span>
+                    </td>
+                    <td class="py-2 text-right font-mono text-slate-600">${item.duration}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('totalTransitionsCount').textContent = `${historyList.length} transitions logged`;
+        }
+
+        // Live Dwell Timer Counter
+        function startDwellTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const data = sensorsData[currentSensorId];
+                if (data.status === 'PERSON_PRESENT') {
+                    data.dwellSeconds++;
+                    updateDwellTimerDisplay(data.dwellSeconds);
+                }
+            }, 1000);
+        }
+
+        function updateDwellTimerDisplay(seconds) {
+            const timerElem = document.getElementById('dwellTimer');
+            if (sensorsData[currentSensorId].status === 'PERSON_ABSENT') {
+                timerElem.textContent = '00:00:00';
+                return;
+            }
+            const hrs = Math.floor(seconds / 3600).toString().padStart(2, '0');
+            const mins = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            timerElem.textContent = `${hrs}:${mins}:${secs}`;
+        }
+
+        // SVG Posture Icon Helper
+        function updatePostureIcon(posture) {
+            const container = document.getElementById('postureIconContainer');
+            let svgPath = '';
+
+            switch (posture.toLowerCase()) {
+                case 'standing':
+                    svgPath = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14v7m-3 0h6"/>`;
+                    break;
+                case 'sitting':
+                    svgPath = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>`;
+                    break;
+                case 'lying':
+                    svgPath = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7M5 12h14"/>`;
+                    break;
+                default:
+                    svgPath = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>`;
+            }
+
+            container.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">${svgPath}</svg>`;
+        }
+
+        // Simulate State Shifts (For Demo / Manual Testing)
+        function simulateState(newState) {
+            const data = sensorsData[currentSensorId];
+            const oldPosture = data.posture;
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+
+            if (newState === 'absent') {
+                data.status = 'PERSON_ABSENT';
+                data.posture = 'Unknown';
+                data.confidence = 0;
+                data.history.unshift({
+                    time: timeStr,
+                    from: oldPosture,
+                    to: 'Absent',
+                    duration: document.getElementById('dwellTimer').textContent
+                });
+                data.dwellSeconds = 0;
+            } else {
+                data.status = 'PERSON_PRESENT';
+                data.posture = newState.charAt(0).toUpperCase() + newState.slice(1);
+                data.confidence = Math.floor(Math.random() * 15) + 82; // 82-97%
+                data.distance = (Math.random() * 1.5 + 1.2); // 1.2 - 2.7m
+                data.history.unshift({
+                    time: timeStr,
+                    from: oldPosture,
+                    to: data.posture,
+                    duration: document.getElementById('dwellTimer').textContent
+                });
+                data.dwellSeconds = 1;
+            }
+
+            renderSensorData(currentSensorId);
+            showToast(`Simulated posture: ${data.posture}`);
+        }
+
+        // Clear History View
+        function clearHistory() {
+            sensorsData[currentSensorId].history = [];
+            renderHistoryTable([]);
+            showToast('Cleared transition history view');
+        }
+
+        // Real-Time Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('systemClock').textContent = `UTC ${now.toISOString().substring(11, 19)}`;
+        }
+
+        // Download ADC Payload Helper
+        function downloadADC(format) {
+            const data = sensorsData[currentSensorId];
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `adc_raw_${currentSensorId}_${timestamp}.${format}`;
+
+            if (format === 'csv') {
+                // Generate Mock CSV Payload
+                let csvContent = "data:text/csv;charset=utf-8,Timestamp_us,Channel,I_Sample,Q_Sample\n";
+                for (let i = 0; i < 64; i++) {
+                    const iVal = Math.floor(Math.sin(i * 0.1) * 2048);
+                    const qVal = Math.floor(Math.cos(i * 0.1) * 2048);
+                    csvContent += `${Date.now() + i},${i % 16},${iVal},${qVal}\n`;
+                }
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+            } else if (format === 'bin') {
+                // Generate Mock Binary Payload
+                const buffer = new ArrayBuffer(6144);
+                const view = new Int16Array(buffer);
+                for (let i = 0; i < view.length; i++) {
+                    view[i] = Math.floor((Math.random() - 0.5) * 4096);
+                }
+
+                const blob = new Blob([buffer], { type: "application/octet-stream" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+                URL.revokeObjectURL(link.href);
+            }
+
+            showToast(`Downloaded ${filename}`);
+        }
+
+        // Toast Notification Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
